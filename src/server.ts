@@ -91,7 +91,7 @@ io.on("connection", (socket) => {
       likedPlaces: { [mapUser(socket.id)]: [] },
     });
     socket.join(roomId);
-    console.log(`🚪 Client ${socket.id} created a new room (${roomId})`);
+    console.log(`🚪 Client ${socket.id} created a new room (${slug})`);
     socket.emit("room_created", { roomId, slug: slug });
     emitRoom(roomId);
   });
