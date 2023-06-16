@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" class="p-4">
+  <head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import { io } from "https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.2/socket.io.esm.min.js";
+
+      const socket = io("ws://localhost:4444");
+
+      socket.on("room_created", (data) => {
+        roomIdText.innerText = data.roomId;
+      });
+
+      socket.on("room_joined", (data) => {
+        currentRoomIdText.innerText = `Successfully joined Room(${data.roomId})`;
+      });
+
+      socket.on("current_room", (data) => {
+        console.log(data);
+        currentRoomObject.innerText = JSON.stringify(data);
+      });
+
+      function createRoom() {
+        socket.emit("create_room");
+      }
+
+      function joinRoom(roomId) {
+        socket.emit("join_room", { roomId });
+      }
+
+      const createRoomButton = document.getElementById("createRoomButton");
+      const roomIdText = document.getElementById("roomIdText");
+      const currentRoomIdText = document.getElementById("currentRoomIdText");
+      const roomCreationForm = document.getElementById("roomCreationForm");
+      const roomIdInput = document.getElementById("roomIdInput");
+      const currentRoomObject = document.getElementById("currentRoomObject");
+
+      createRoomButton.addEventListener("click", () => {
+        createRoomButton.disabled = true;
+        createRoom();
+      });
+
+      roomCreationForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        joinRoom(roomIdInput.value);
+        roomIdInput.value = "";
+      });
+    </script>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Test</title>
+  </head>
+  <body>
+    <div class="flex flex-col gap-y-2">
+      <div class="flex items-center gap-x-2">
+        <button
+          id="createRoomButton"
+          class="disabled:bg-slate-300 bg-emerald-500 text-white px-3 py-1 hover:bg-emerald-600 rounded-lg text-sm w-max"
+        >
+          Create Room
+        </button>
+        <p class="text-sm select-all" id="roomIdText"></p>
+      </div>
+      <form id="roomCreationForm">
+        <input
+          placeholder="Room ID"
+          type="text"
+          id="roomIdInput"
+          class="border rounded-lg text-sm px-3 py-1"
+        />
+        <button
+          id="joinRoomButton"
+          class="bg-emerald-500 text-white px-3 py-1 hover:bg-emerald-600 rounded-lg text-sm"
+        >
+          Join Room
+        </button>
+      </form>
+      <p class="text-sm" id="currentRoomIdText"></p>
+      <p class="text-sm mt-6" id="currentRoomObject"></p>
+    </div>
+  </body>
+</html>
