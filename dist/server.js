@@ -32,7 +32,7 @@ const socket_io_1 = require("socket.io");
 const dotenv = __importStar(require("dotenv"));
 const cors_1 = __importDefault(require("cors"));
 const uuid_1 = require("uuid");
-const voucher_code_generator_1 = __importDefault(require("voucher-code-generator"));
+const random_word_slugs_1 = require("random-word-slugs");
 dotenv.config();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
@@ -44,28 +44,38 @@ app.get("/", function (req, res) {
     res.sendFile(__dirname + "/public/index.html");
 });
 let rooms = [];
+let userMap;
+function mapUser(socketId) {
+    return userMap[socketId];
+}
 io.on("connection", (socket) => {
     console.log(`✅ Client ${socket.id} connected`);
+    userMap = {
+        ...userMap,
+        [socket.id]: (0, random_word_slugs_1.generateSlug)(2, { categories: { noun: ["animals"] } }),
+    };
     function emitRoom(roomId) {
         const room = rooms.find((room) => room.id === roomId);
         if (room) {
-            socket.emit("current_room", { room });
-            socket.to(roomId).emit("current_room", { room });
+            socket.emit("current_room", { room, userMap });
+            socket.to(roomId).emit("current_room", { room, userMap });
         }
     }
     socket.on("disconnect", () => {
         const roomIds = rooms
             .filter((room) => Object.keys(room.likedPlaces).length !== 0 &&
-            Object.keys(room.likedPlaces).includes(socket.id))
+            Object.keys(room.likedPlaces).includes(mapUser(socket.id)))
             .map((room) => room.id);
-        rooms = rooms.map((room) => {
+        rooms = rooms
+            .map((room) => {
             if (Object.keys(room.likedPlaces).length !== 0 &&
-                Object.keys(room.likedPlaces).includes(socket.id)) {
-                const { [socket.id]: socketId, ...otherUsers } = room.likedPlaces;
+                Object.keys(room.likedPlaces).includes(mapUser(socket.id))) {
+                const { [mapUser(socket.id)]: socketId, ...otherUsers } = room.likedPlaces;
                 return { ...room, likedPlaces: otherUsers };
             }
             return room;
-        });
+        })
+            .filter((room) => Object.keys(room.likedPlaces).length !== 0);
         roomIds.forEach((id) => emitRoom(id));
         console.log(`⛔️ Client ${socket.id} disconnected`);
     });
@@ -75,20 +85,17 @@ io.on("connection", (socket) => {
     });
     socket.on("create_room", () => {
         const roomId = (0, uuid_1.v4)();
-        const slug = voucher_code_generator_1.default.generate({
-            count: 1,
-            length: 8,
-            charset: "abcdefghijklmnopqrstuvwxyz",
-        });
+        const slug = (0, random_word_slugs_1.generateSlug)(2);
+        console.log(slug);
         rooms.push({
             id: roomId,
-            slug: slug[0],
-            createdBy: socket.id,
-            likedPlaces: { [socket.id]: [] },
+            slug: slug,
+            createdBy: mapUser(socket.id),
+            likedPlaces: { [mapUser(socket.id)]: [] },
         });
         socket.join(roomId);
-        console.log(`🚪 Client ${socket.id} created a new room (${roomId})`);
-        socket.emit("room_created", { roomId, slug: slug[0] });
+        console.log(`🚪 Client ${socket.id} created a new room (${slug})`);
+        socket.emit("room_created", { roomId, slug: slug });
         emitRoom(roomId);
     });
     socket.on("join_room", ({ roomId, slug }) => {
@@ -99,7 +106,7 @@ io.on("connection", (socket) => {
                 if (item.id === room.id) {
                     return {
                         ...item,
-                        likedPlaces: Object.assign({ [socket.id]: [] }, item.likedPlaces),
+                        likedPlaces: Object.assign({ [mapUser(socket.id)]: [] }, item.likedPlaces),
                     };
                 }
                 return item;
