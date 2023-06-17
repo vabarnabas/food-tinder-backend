@@ -29,6 +29,37 @@ function mapUser(socketId: string) {
   return userMap[socketId];
 }
 
+function stringBuilder(path: string, params?: Record<string, unknown>) {
+  let localString: string = path;
+
+  if (!params) return localString;
+
+  Object.keys(params).forEach((key) => {
+    const param = params[key];
+
+    if (typeof param === "string" && localString.includes(`:${key}`)) {
+      localString = localString.replace(`:${key}`, param);
+    }
+  });
+
+  return localString;
+}
+
+const logger = {
+  success: (message: string, params?: Record<string, string>) => {
+    console.log(`✅ ${stringBuilder(message, params)}`);
+  },
+  error: (message: string, params?: Record<string, string>) => {
+    console.log(`⛔️ ${stringBuilder(message, params)}`);
+  },
+  warning: (message: string, params?: Record<string, string>) => {
+    console.log(`🟨 ${stringBuilder(message, params)}`);
+  },
+  info: (message: string, params?: Record<string, string>) => {
+    console.log(`🚀 ${stringBuilder(message, params)}`);
+  },
+};
+
 io.on("connection", (socket) => {
   console.log(`✅ Client ${socket.id} connected`);
   userMap = {
@@ -83,7 +114,6 @@ io.on("connection", (socket) => {
   socket.on("create_room", () => {
     const roomId = uuidv4();
     const slug = generateSlug(2);
-    console.log(slug);
     rooms.push({
       id: roomId,
       slug: slug,
@@ -117,15 +147,16 @@ io.on("connection", (socket) => {
       emitRoom(room.id);
       socket.emit("room_joined", { roomId: room.id, slug: room.slug });
     } else {
-      console.log(
-        `⛔️🚪 Client ${socket.id} tried to join room (${
-          roomId || slug
-        }), but the room doesn't exists.`
+      logger.error(
+        "Client :socketId tried to join room (:roomId), but the room doesn't exists",
+        { socketId: socket.id, roomId: roomId || slug }
       );
     }
   });
 });
 
 server.listen(process.env.PORT || 3000, () => {
-  console.log(`🚀 Server is running on port ${process.env.PORT || 3000}`);
+  logger.info("Server is running on port :port", {
+    port: (process.env.PORT || 3000).toString(),
+  });
 });
