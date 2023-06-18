@@ -61,7 +61,7 @@ const logger = {
 };
 
 io.on("connection", (socket) => {
-  console.log(`✅ Client ${socket.id} connected`);
+  logger.success("Client :socketId connected", { socketId: socket.id });
   userMap = {
     ...userMap,
     [socket.id]: generateSlug(2, { categories: { noun: ["animals"] } }),
@@ -103,12 +103,7 @@ io.on("connection", (socket) => {
 
     roomIds.forEach((id) => emitRoom(id));
 
-    console.log(`⛔️ Client ${socket.id} disconnected`);
-  });
-
-  socket.on("message", (data) => {
-    console.log(`📩 Client ${socket.id} sent message: ${data}`);
-    io.emit("message", `${socket.id}: ${data}`);
+    logger.error("Client :socketId disconnected", { socketId: socket.id });
   });
 
   socket.on("create_room", () => {
@@ -121,7 +116,10 @@ io.on("connection", (socket) => {
       likedPlaces: { [mapUser(socket.id)]: [] },
     });
     socket.join(roomId);
-    console.log(`🚪 Client ${socket.id} created a new room (${slug})`);
+    logger.success("Client :socketId created a new room (:roomId)", {
+      socketId: socket.id,
+      roomId: slug,
+    });
     socket.emit("room_created", { roomId, slug: slug });
     emitRoom(roomId);
   });
@@ -143,7 +141,10 @@ io.on("connection", (socket) => {
 
         return item;
       });
-      console.log(`✅🚪 Client ${socket.id} joined room (${room.id})`);
+      logger.success("Client :socketId joined room (:roomId)", {
+        socketId: socket.id,
+        roomId: room.slug,
+      });
       emitRoom(room.id);
       socket.emit("room_joined", { roomId: room.id, slug: room.slug });
     } else {
