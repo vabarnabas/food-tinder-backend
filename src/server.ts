@@ -1,11 +1,10 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import * as dotenv from "dotenv";
 import cors from "cors";
 import { v4 as uuidv4 } from "uuid";
 import { Room } from "./types/room.type";
-import voucher_codes from "voucher-code-generator";
 import { generateSlug } from "random-word-slugs";
 
 dotenv.config();
@@ -18,7 +17,7 @@ const io = new Server(server, {
   cors: { origin: "*" },
 });
 
-app.get("/", function (req, res) {
+app.get("/", function (_req, res) {
   res.sendFile(__dirname + "/public/index.html");
 });
 
@@ -87,6 +86,10 @@ io.on("connection", (socket) => {
 
     rooms = rooms
       .map((room) => {
+        if (room.leader === mapUser(socket.id)) {
+          room.leader = Object.keys(room.likedPlaces)[0];
+        }
+
         if (
           Object.keys(room.likedPlaces).length !== 0 &&
           Object.keys(room.likedPlaces).includes(mapUser(socket.id))
@@ -103,6 +106,8 @@ io.on("connection", (socket) => {
 
     roomIds.forEach((id) => emitRoom(id));
 
+    console.log("Rooms:", rooms);
+
     logger.error("Client :socketId disconnected", { socketId: socket.id });
   });
 
@@ -112,7 +117,7 @@ io.on("connection", (socket) => {
     rooms.push({
       id: roomId,
       slug: slug,
-      createdBy: mapUser(socket.id),
+      leader: mapUser(socket.id),
       likedPlaces: { [mapUser(socket.id)]: [] },
     });
     socket.join(roomId);
